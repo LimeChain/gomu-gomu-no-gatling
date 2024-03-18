@@ -13,14 +13,12 @@ use starknet::{
         Account, Call, ConnectedAccount, ExecutionEncoder, RawExecution, SingleOwnerAccount,
     },
     core::types::{
-        ExecutionResult, FieldElement, InvokeTransactionResult, MaybePendingTransactionReceipt,
+        BroadcastedInvokeTransaction, ExecutionResult, FieldElement, InvokeTransactionResult,
+        MaybePendingTransactionReceipt,
     },
     macros::{felt, selector},
     providers::{
-        jsonrpc::{
-            HttpTransport, HttpTransportError, JsonRpcClientError, JsonRpcError, JsonRpcMethod,
-            JsonRpcResponse,
-        },
+        jsonrpc::{HttpTransport, JsonRpcError, JsonRpcMethod, JsonRpcResponse},
         JsonRpcClient, ProviderError,
     },
     signers::LocalWallet,
@@ -82,7 +80,7 @@ pub async fn erc20(shooter: &GatlingShooterSetup) -> color_eyre::Result<GooseMet
                 )
                 .register_transaction(
                     Transaction::new(transfer)
-                        .set_name("Transfer")
+                        .set_name("Transaction Submission")
                         .set_sequence(1),
                 )
                 .register_transaction(
@@ -168,7 +166,11 @@ pub async fn erc721(shooter: &GatlingShooterSetup) -> color_eyre::Result<GooseMe
                         .set_name("Mint Setup")
                         .set_on_start(),
                 )
-                .register_transaction(Transaction::new(mint).set_name("Minting").set_sequence(1))
+                .register_transaction(
+                    Transaction::new(mint)
+                        .set_name("Transaction Submission")
+                        .set_sequence(1),
+                )
                 .register_transaction(
                     Transaction::new(mint_wait)
                         .set_name("Mint Finalizing")
@@ -195,13 +197,11 @@ struct GooseUserState {
     prev_tx: Vec<FieldElement>,
 }
 
-pub type RpcError = ProviderError<JsonRpcClientError<HttpTransportError>>;
-
 impl GooseUserState {
     pub async fn new(
         account: StarknetAccount,
         transactions_amount: usize,
-    ) -> Result<Self, RpcError> {
+    ) -> Result<Self, ProviderError> {
         Ok(Self {
             nonce: account.get_nonce().await?,
             account,
@@ -213,7 +213,7 @@ impl GooseUserState {
 async fn setup(
     accounts: Vec<StarknetAccount>,
     transactions_amount: usize,
-) -> Result<TransactionFunction, RpcError> {
+) -> Result<TransactionFunction, ProviderError> {
     let queue = ArrayQueue::new(accounts.len());
     for account in accounts {
         queue
@@ -391,7 +391,7 @@ pub async fn wait_for_tx(
         }
 
         let reverted_tag = || format!("Transaction {tx_hash:#064x} has been rejected/reverted");
-
+      
         const TRANSACTION_HASH_NOT_FOUND: i64 = 29;
 
         match receipt {
@@ -466,12 +466,12 @@ pub async fn send_execution<T: DeserializeOwned>(
     // see https://github.com/xJonathanLEI/starknet-rs/issues/538
     let raw_exec = unsafe { mem::transmute::<FakeRawExecution, RawExecution>(raw_exec) };
 
-    let param = starknet::core::types::BroadcastedInvokeTransaction {
+    let param = BroadcastedInvokeTransaction {
         sender_address: from_account.address(),
         calldata,
         max_fee: MAX_FEE,
         signature: from_account
-            .sign_execution(&raw_exec)
+            .sign_execution(&raw_exec, false)
             .await
             .expect("Raw Execution should be correctly constructed for signature"),
         nonce,

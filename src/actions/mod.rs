@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use ::goose::metrics::GooseMetrics;
 use futures::Future;
 use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
@@ -80,7 +82,7 @@ pub async fn shoot(config: GatlingConfig) -> color_eyre::Result<()> {
 async fn make_report_over_bench(
     bench: impl Future<Output = color_eyre::Result<GooseMetrics>>,
     name: String,
-    rpc_client: &JsonRpcClient<HttpTransport>,
+    rpc_client: &Arc<JsonRpcClient<HttpTransport>>,
     num_blocks: u64,
 ) -> color_eyre::Result<BenchmarkReport> {
     let start_block = rpc_client.block_number().await?;
