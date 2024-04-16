@@ -1,6 +1,6 @@
 use crate::config::{ContractSourceConfig, GatlingConfig};
 use crate::utils::{compute_contract_address, wait_for_tx};
-use color_eyre::eyre::Context;
+use color_eyre::eyre::{Context, OptionExt};
 use color_eyre::{eyre::eyre, Result};
 
 use log::{debug, info, warn};
@@ -18,9 +18,8 @@ use starknet::core::types::{
     contract::legacy::LegacyContractClass, BlockId, BlockTag, FieldElement, StarknetError,
 };
 use starknet::macros::{felt, selector};
-use starknet::providers::ProviderError;
 use starknet::providers::{jsonrpc::HttpTransport, JsonRpcClient, Provider};
-use starknet::providers::{MaybeUnknownErrorCode, StarknetErrorWithMessage};
+use starknet::providers::{MaybeUnknownErrorCode, ProviderError, StarknetErrorWithMessage};
 use starknet::signers::{LocalWallet, SigningKey};
 use std::str;
 use std::sync::Arc;
@@ -86,9 +85,9 @@ impl GatlingShooterSetup {
     }
 
     pub fn environment(&self) -> Result<&GatlingEnvironment> {
-        self.environment.as_ref().ok_or(eyre!(
-            "Environment is not yet populated, you should run the setup function first"
-        ))
+        self.environment
+            .as_ref()
+            .ok_or_eyre("Environment is not yet populated, you should run the setup function first")
     }
 
     pub fn config(&self) -> &GatlingConfig {
