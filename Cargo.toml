@@ -24,6 +24,7 @@ tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 clap = { version = "4.2.7", features = ["derive"] }
 color-eyre = "0.6.2"
+eyre = "0.6.12"
 config = "0.14.0"
 dotenvy = "0.15.7"
 serde = "1.0.163"
